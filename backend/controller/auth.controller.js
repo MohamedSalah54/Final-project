@@ -16,69 +16,47 @@ export const getMe = async (req,res) =>{
 }
 
 
-export const signUp = async (req,res) =>{
-   try{
-    const {username,fullName,email,password} = req.body;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if(!emailRegex.test(email)){
-        return res.status(400).json({error:"Invalid email format"})
-    }
 
-    const existingUser = await User.findOne({username})
-    if(existingUser){
-        return res.status(400).json({error:"Username is already taken"})
-    }
+export const register = async (req, res) => {
+  try {
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      picturePath,
+      friends,
+      location,
+      occupation,
+    } = req.body;
 
-    const existingEmail = await User.findOne({email})
-    if(existingEmail){
-        return res.status(400).json({error:"Email is already taken"})
-    }
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    if(password.length<6){
-        return res.status(400).json({error:"Password must have 6 characters at least"})
-    }
-    
-
-    const salt = await bcrypt.genSalt(12)
-    const hashedPassword = await bcrypt.hash(password,salt)
-
-    const user = new User({
-        username,
-        fullName,
-        email,
-        password:hashedPassword
-    })
-
-    if(user){
-        generateTokenAndSetcookie(user._id,res)
-        await user.save()
-        return res.status(201).json({
-            _id : user.id,
-            username : user.username,
-            fullName : user.fullName,
-            email : user.email,
-            coverImg : user.coverImg,
-            profileImg : user.profileImg,
-            followers : user.followers,
-            following : user.following
-        })
-    }else{
-        return res.status(400).json({error:"Invalid user data"})
-    }
-
-   }catch(error){
-    console.log("Error from signup controller",error.message);
-    return res.status(500).json({error:"Internal server error"})
-    
-   }
-
-}
+    const newUser = new User({
+      firstName,
+      lastName,
+      email,
+      password: hashedPassword,
+      picturePath,
+      friends,
+      location,
+      occupation,
+      viewedProfile: Math.floor(Math.random() * 10000),
+      impressions: Math.floor(Math.random() * 10000),
+    });
+    const savedUser = await newUser.save();
+    res.status(201).json(savedUser);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
 
 export const login = async (req,res) =>{
     try{
-        const {username,password} = req.body;
-        const user = await User.findOne({username})
+        const {email,password} = req.body;
+        const user = await User.findOne({email})
         const isPasswordCorrect = await bcrypt.compare(password,user?.password || "" )
         if(!user || !isPasswordCorrect){
             return res.status(400).json({error:"Invalid email or password"})
@@ -87,13 +65,13 @@ export const login = async (req,res) =>{
         generateTokenAndSetcookie(user._id,res)
         return res.status(201).json({
             _id : user._id,
-            fullName : user.fullName,
-            username : user.username,
+            firstName : user.firstName,
+            lastName : user.lastName,
             email : user.email,
-            followers : user.followers,
-            following : user.following,
-            coverImg : user.coverImg,
-            profileImg : user.profileImg
+            picturePath : user.picturePath,
+            friends : user.friends,
+            location : user.location,
+            occupation : user.occupation
         })
     
     }catch(error){
